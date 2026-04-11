@@ -20,10 +20,10 @@ const Index = () => {
       <header className="border-b border-border py-8">
         <div className="container max-w-4xl mx-auto px-4">
           <h1 className="text-3xl md:text-5xl text-primary mb-2">
-            Bedrock Commands
+            mcbCode <span className="text-secondary">/</span> Command Vault
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">
-            Complete reference for every Minecraft <span className="text-secondary">Bedrock Edition</span> command
+            Every Minecraft <span className="text-secondary">Bedrock Edition</span> command — indexed & detailed
           </p>
         </div>
       </header>
