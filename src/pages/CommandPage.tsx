@@ -28,7 +28,7 @@ const CommandPage = () => {
             to="/"
             className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-1 mb-4"
           >
-            <ArrowLeft className="h-3 w-3" /> All Commands
+            <ArrowLeft className="h-3 w-3" /> mcbCode / Command Vault
           </Link>
           <h1 className="text-3xl md:text-5xl text-primary">/{command.name}</h1>
         </div>
