@@ -47,7 +47,7 @@ const Index = () => {
               to={`/c/${cmd.name}`}
               className="group flex items-baseline gap-3 px-4 py-3 rounded bg-card border border-border hover:border-primary/50 transition-colors"
             >
-              <span className="text-primary font-mcb shrink-0">/{cmd.name}</span>
+              <span className="text-primary font-mc shrink-0">{cmd.name}</span>
               <span className="text-muted-foreground text-sm truncate">
                 {cmd.description}
               </span>
