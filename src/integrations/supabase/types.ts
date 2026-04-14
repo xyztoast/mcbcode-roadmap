@@ -18,16 +18,19 @@ export type Database = {
         Row: {
           checked: boolean
           command_name: string
+          status: string
           updated_at: string
         }
         Insert: {
           checked?: boolean
           command_name: string
+          status?: string
           updated_at?: string
         }
         Update: {
           checked?: boolean
           command_name?: string
+          status?: string
           updated_at?: string
         }
         Relationships: []
