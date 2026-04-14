@@ -1,7 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { bedrockCommands } from "@/data/bedrockCommands";
-import { Search, Filter, X } from "lucide-react";
+import { Search, Filter, X, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const opLevels = ["0", "1", "2", "3", "4"];
 const tags = [
@@ -18,6 +20,38 @@ const Index = () => {
   const [selectedOp, setSelectedOp] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<TagKey>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
+  const [checkedCommands, setCheckedCommands] = useState<Set<string>>(new Set());
+  const { isAuthed, logout } = useAuth();
+
+  // Fetch checked status from DB
+  useEffect(() => {
+    const fetchStatus = async () => {
+      const { data } = await supabase
+        .from("command_status")
+        .select("command_name, checked");
+      if (data) {
+        setCheckedCommands(new Set(data.filter(d => d.checked).map(d => d.command_name)));
+      }
+    };
+    fetchStatus();
+  }, []);
+
+  const toggleCheck = async (commandName: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newChecked = !checkedCommands.has(commandName);
+    
+    // Optimistic update
+    setCheckedCommands(prev => {
+      const next = new Set(prev);
+      newChecked ? next.add(commandName) : next.delete(commandName);
+      return next;
+    });
+
+    await supabase
+      .from("command_status")
+      .upsert({ command_name: commandName, checked: newChecked, updated_at: new Date().toISOString() }, { onConflict: "command_name" });
+  };
 
   const toggleTag = (key: TagKey) => {
     setSelectedTags((prev) => {
@@ -27,8 +61,7 @@ const Index = () => {
     });
   };
 
-  const activeFilterCount =
-    (selectedOp ? 1 : 0) + selectedTags.size;
+  const activeFilterCount = (selectedOp ? 1 : 0) + selectedTags.size;
 
   const clearFilters = () => {
     setSelectedOp(null);
@@ -48,16 +81,26 @@ const Index = () => {
     });
   }, [search, selectedOp, selectedTags]);
 
+  const checkedCount = bedrockCommands.filter(c => checkedCommands.has(c.name)).length;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border py-8">
-        <div className="container max-w-4xl mx-auto px-4">
-          <h1 className="text-3xl md:text-5xl text-primary mb-2">
-            mcbCode <span className="text-secondary">/</span> Command Vault
-          </h1>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Every Minecraft <span className="text-secondary">Bedrock Edition</span> command — indexed & detailed
-          </p>
+        <div className="container max-w-4xl mx-auto px-4 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl md:text-5xl text-primary mb-2">mcbCode</h1>
+            <p className="text-muted-foreground text-sm md:text-base">
+              Every Minecraft <span className="text-secondary">Bedrock Edition</span> command — indexed & detailed
+            </p>
+          </div>
+          {isAuthed && (
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-xs text-muted-foreground">{checkedCount}/{bedrockCommands.length}</span>
+              <button onClick={logout} className="text-muted-foreground hover:text-primary transition-colors" title="Logout">
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -155,9 +198,27 @@ const Index = () => {
             <Link
               key={cmd.name}
               to={`/c/${cmd.name}`}
-              className="group flex items-baseline gap-3 px-4 py-3 rounded bg-card border border-border hover:border-primary/50 transition-colors"
+              className={`group flex items-center gap-3 px-4 py-3 rounded bg-card border border-border hover:border-primary/50 transition-colors ${
+                checkedCommands.has(cmd.name) ? "opacity-60" : ""
+              }`}
             >
-              <span className="text-primary font-mc shrink-0">{cmd.name}</span>
+              {isAuthed && (
+                <button
+                  onClick={(e) => toggleCheck(cmd.name, e)}
+                  className={`shrink-0 h-4 w-4 rounded-sm border transition-colors ${
+                    checkedCommands.has(cmd.name)
+                      ? "bg-primary border-primary"
+                      : "border-muted-foreground hover:border-primary"
+                  }`}
+                >
+                  {checkedCommands.has(cmd.name) && (
+                    <svg viewBox="0 0 16 16" className="h-4 w-4 text-primary-foreground">
+                      <path d="M12 5l-5 5-3-3" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
+              )}
+              <span className={`text-primary font-mc shrink-0 ${checkedCommands.has(cmd.name) ? "line-through" : ""}`}>{cmd.name}</span>
               <span className="text-muted-foreground text-sm truncate">
                 {cmd.description}
               </span>
