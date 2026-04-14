@@ -14,7 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      command_status: {
+        Row: {
+          checked: boolean
+          command_name: string
+          updated_at: string
+        }
+        Insert: {
+          checked?: boolean
+          command_name: string
+          updated_at?: string
+        }
+        Update: {
+          checked?: boolean
+          command_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
