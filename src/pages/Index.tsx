@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { bedrockCommands } from "@/data/bedrockCommands";
-import { Search, Filter, X, LogOut } from "lucide-react";
+import { Search, Filter, X, LogOut, Circle, CircleDot, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { Progress } from "@/components/ui/progress";
 
 const opLevels = ["0", "1", "2", "3", "4"];
 const tags = [
@@ -14,43 +15,44 @@ const tags = [
 ] as const;
 
 type TagKey = (typeof tags)[number]["key"];
+type CommandStatus = "unchecked" | "partial" | "done";
 
 const Index = () => {
   const [search, setSearch] = useState("");
   const [selectedOp, setSelectedOp] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<TagKey>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
-  const [checkedCommands, setCheckedCommands] = useState<Set<string>>(new Set());
+  const [commandStatuses, setCommandStatuses] = useState<Record<string, CommandStatus>>({});
   const { isAuthed, logout } = useAuth();
 
-  // Fetch checked status from DB
   useEffect(() => {
     const fetchStatus = async () => {
       const { data } = await supabase
         .from("command_status")
-        .select("command_name, checked");
+        .select("command_name, status");
       if (data) {
-        setCheckedCommands(new Set(data.filter(d => d.checked).map(d => d.command_name)));
+        const map: Record<string, CommandStatus> = {};
+        data.forEach(d => { map[d.command_name] = (d.status as CommandStatus) || "unchecked"; });
+        setCommandStatuses(map);
       }
     };
     fetchStatus();
   }, []);
 
-  const toggleCheck = async (commandName: string, e: React.MouseEvent) => {
+  const cycleStatus = async (commandName: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const newChecked = !checkedCommands.has(commandName);
-    
-    // Optimistic update
-    setCheckedCommands(prev => {
-      const next = new Set(prev);
-      newChecked ? next.add(commandName) : next.delete(commandName);
-      return next;
-    });
+    const current = commandStatuses[commandName] || "unchecked";
+    const next: CommandStatus = current === "unchecked" ? "partial" : current === "partial" ? "done" : "unchecked";
+
+    setCommandStatuses(prev => ({ ...prev, [commandName]: next }));
 
     await supabase
       .from("command_status")
-      .upsert({ command_name: commandName, checked: newChecked, updated_at: new Date().toISOString() }, { onConflict: "command_name" });
+      .upsert(
+        { command_name: commandName, status: next, checked: next === "done", updated_at: new Date().toISOString() },
+        { onConflict: "command_name" }
+      );
   };
 
   const toggleTag = (key: TagKey) => {
@@ -81,26 +83,59 @@ const Index = () => {
     });
   }, [search, selectedOp, selectedTags]);
 
-  const checkedCount = bedrockCommands.filter(c => checkedCommands.has(c.name)).length;
+  const doneCount = bedrockCommands.filter(c => commandStatuses[c.name] === "done").length;
+  const partialCount = bedrockCommands.filter(c => commandStatuses[c.name] === "partial").length;
+  const totalCommands = bedrockCommands.length;
+  const progressPercent = ((doneCount + partialCount * 0.5) / totalCommands) * 100;
+
+  const statusIcon = (name: string) => {
+    const s = commandStatuses[name] || "unchecked";
+    if (s === "done") return <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />;
+    if (s === "partial") return <CircleDot className="h-4 w-4 text-secondary shrink-0" />;
+    return <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />;
+  };
+
+  const statusClass = (name: string) => {
+    const s = commandStatuses[name] || "unchecked";
+    if (s === "done") return "opacity-60";
+    if (s === "partial") return "border-secondary/50";
+    return "";
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border py-8">
-        <div className="container max-w-4xl mx-auto px-4 flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl md:text-5xl text-primary mb-2">mcbCode</h1>
-            <p className="text-muted-foreground text-sm md:text-base">
-              Every Minecraft <span className="text-secondary">Bedrock Edition</span> command — indexed & detailed
-            </p>
-          </div>
-          {isAuthed && (
-            <div className="flex items-center gap-3 mt-2">
-              <span className="text-xs text-muted-foreground">{checkedCount}/{bedrockCommands.length}</span>
-              <button onClick={logout} className="text-muted-foreground hover:text-primary transition-colors" title="Logout">
-                <LogOut className="h-4 w-4" />
-              </button>
+        <div className="container max-w-4xl mx-auto px-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <a href="https://mcbcode.com" className="text-3xl md:text-5xl text-primary mb-2 inline-block hover:opacity-80 transition-opacity">
+                mcbCode
+              </a>
+              <p className="text-muted-foreground text-sm md:text-base">
+                Every Minecraft <span className="text-secondary">Bedrock Edition</span> command — indexed & detailed
+              </p>
             </div>
-          )}
+            {isAuthed && (
+              <div className="flex items-center gap-3 mt-2">
+                <button onClick={logout} className="text-muted-foreground hover:text-primary transition-colors" title="Logout">
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Progress section - visible to everyone */}
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                <span className="text-primary">{doneCount}</span> done
+                {partialCount > 0 && <> · <span className="text-secondary">{partialCount}</span> partial</>}
+                {" "}/ {totalCommands} commands
+              </span>
+              <span>{Math.round(progressPercent)}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
         </div>
       </header>
 
@@ -198,27 +233,20 @@ const Index = () => {
             <Link
               key={cmd.name}
               to={`/c/${cmd.name}`}
-              className={`group flex items-center gap-3 px-4 py-3 rounded bg-card border border-border hover:border-primary/50 transition-colors ${
-                checkedCommands.has(cmd.name) ? "opacity-60" : ""
-              }`}
+              className={`group flex items-center gap-3 px-4 py-3 rounded bg-card border border-border hover:border-primary/50 transition-colors ${statusClass(cmd.name)}`}
             >
-              {isAuthed && (
+              {isAuthed ? (
                 <button
-                  onClick={(e) => toggleCheck(cmd.name, e)}
-                  className={`shrink-0 h-4 w-4 rounded-sm border transition-colors ${
-                    checkedCommands.has(cmd.name)
-                      ? "bg-primary border-primary"
-                      : "border-muted-foreground hover:border-primary"
-                  }`}
+                  onClick={(e) => cycleStatus(cmd.name, e)}
+                  className="shrink-0"
+                  title="Cycle: unchecked → partial → done"
                 >
-                  {checkedCommands.has(cmd.name) && (
-                    <svg viewBox="0 0 16 16" className="h-4 w-4 text-primary-foreground">
-                      <path d="M12 5l-5 5-3-3" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
+                  {statusIcon(cmd.name)}
                 </button>
+              ) : (
+                statusIcon(cmd.name)
               )}
-              <span className={`text-primary font-mc shrink-0 ${checkedCommands.has(cmd.name) ? "line-through" : ""}`}>{cmd.name}</span>
+              <span className={`text-primary font-mc shrink-0 ${commandStatuses[cmd.name] === "done" ? "line-through" : ""}`}>{cmd.name}</span>
               <span className="text-muted-foreground text-sm truncate">
                 {cmd.description}
               </span>
