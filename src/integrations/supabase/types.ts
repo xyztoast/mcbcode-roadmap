@@ -35,6 +35,27 @@ export type Database = {
         }
         Relationships: []
       }
+      command_update_log: {
+        Row: {
+          command_name: string
+          created_at: string
+          id: string
+          new_status: string
+        }
+        Insert: {
+          command_name: string
+          created_at?: string
+          id?: string
+          new_status: string
+        }
+        Update: {
+          command_name?: string
+          created_at?: string
+          id?: string
+          new_status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
