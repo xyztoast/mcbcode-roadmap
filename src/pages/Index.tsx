@@ -163,9 +163,9 @@ const Index = () => {
 
   const statusClass = (name: string) => {
     const s = commandStatuses[name] || "unchecked";
-    if (s === "done") return "opacity-60";
+    if (s === "done") return "opacity-40 bg-background";
     if (s === "partial") return "border-warning/50";
-    if (s === "skip") return "opacity-30";
+    if (s === "skip") return "opacity-25 bg-background";
     return "";
   };
 
@@ -354,7 +354,7 @@ const Index = () => {
               {isAuthed ? (
                 <button
                   onClick={(e) => cycleStatus(cmd.name, e)}
-                  className="shrink-0"
+                  className="shrink-0 p-2 -m-2 hover:bg-muted/50 transition-colors"
                   title="Cycle: unchecked → partial → done → skip"
                 >
                   <StatusSquare status={commandStatuses[cmd.name] || "unchecked"} />
