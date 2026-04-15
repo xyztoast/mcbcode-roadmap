@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { bedrockCommands } from "@/data/bedrockCommands";
-import { Search, Filter, X, LogOut, Circle, CircleDot, CheckCircle2, Ban } from "lucide-react";
+import { Search, X, LogOut, Grid3X3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
@@ -27,6 +27,7 @@ const tags = [
 
 type TagKey = (typeof tags)[number]["key"];
 type CommandStatus = "unchecked" | "partial" | "done" | "skip";
+type StatusFilter = "all" | "unchecked" | "partial" | "done" | "skip";
 
 const chartConfig = {
   updates: {
@@ -35,10 +36,23 @@ const chartConfig = {
   },
 };
 
+const StatusSquare = ({ status }: { status: CommandStatus }) => {
+  const colors: Record<CommandStatus, string> = {
+    unchecked: "bg-muted-foreground/20 border-muted-foreground/30",
+    partial: "bg-warning border-warning",
+    done: "bg-primary border-primary",
+    skip: "bg-destructive/50 border-destructive/60",
+  };
+  return (
+    <div className={`w-4 h-4 shrink-0 border-2 ${colors[status]}`} />
+  );
+};
+
 const Index = () => {
   const [search, setSearch] = useState("");
   const [selectedOp, setSelectedOp] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<TagKey>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [commandStatuses, setCommandStatuses] = useState<Record<string, CommandStatus>>({});
   const [updateLog, setUpdateLog] = useState<{ date: string; updates: number }[]>([]);
@@ -95,7 +109,6 @@ const Index = () => {
       .from("command_update_log")
       .insert({ command_name: commandName, new_status: next });
 
-    // Update local log
     const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
     setUpdateLog(prev => {
       const copy = [...prev];
@@ -117,11 +130,12 @@ const Index = () => {
     });
   };
 
-  const activeFilterCount = (selectedOp ? 1 : 0) + selectedTags.size;
+  const activeFilterCount = (selectedOp ? 1 : 0) + selectedTags.size + (statusFilter !== "all" ? 1 : 0);
 
   const clearFilters = () => {
     setSelectedOp(null);
     setSelectedTags(new Set());
+    setStatusFilter("all");
   };
 
   const filtered = useMemo(() => {
@@ -133,23 +147,19 @@ const Index = () => {
       if (selectedTags.has("bedrockOnly") && !cmd.bedrockOnly) return false;
       if (selectedTags.has("eduOnly") && !cmd.eduOnly) return false;
       if (selectedTags.has("serverOnly") && !cmd.serverOnly) return false;
+      if (statusFilter !== "all") {
+        const s = commandStatuses[cmd.name] || "unchecked";
+        if (s !== statusFilter) return false;
+      }
       return true;
     });
-  }, [search, selectedOp, selectedTags]);
+  }, [search, selectedOp, selectedTags, statusFilter, commandStatuses]);
 
   const doneCount = bedrockCommands.filter(c => commandStatuses[c.name] === "done").length;
   const partialCount = bedrockCommands.filter(c => commandStatuses[c.name] === "partial").length;
   const skipCount = bedrockCommands.filter(c => commandStatuses[c.name] === "skip").length;
   const totalCommands = bedrockCommands.length;
   const progressPercent = ((doneCount + partialCount * 0.5) / totalCommands) * 100;
-
-  const statusIcon = (name: string) => {
-    const s = commandStatuses[name] || "unchecked";
-    if (s === "done") return <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />;
-    if (s === "partial") return <CircleDot className="h-4 w-4 text-warning shrink-0" />;
-    if (s === "skip") return <Ban className="h-4 w-4 text-destructive/60 shrink-0" />;
-    return <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />;
-  };
 
   const statusClass = (name: string) => {
     const s = commandStatuses[name] || "unchecked";
@@ -158,6 +168,14 @@ const Index = () => {
     if (s === "skip") return "opacity-30";
     return "";
   };
+
+  const statusFilters: { key: StatusFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "unchecked", label: "Unchecked" },
+    { key: "partial", label: "Partial" },
+    { key: "done", label: "Done" },
+    { key: "skip", label: "Skipped" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -181,7 +199,7 @@ const Index = () => {
             )}
           </div>
 
-          {/* Progress section - visible to everyone */}
+          {/* Progress section */}
           <HoverCard openDelay={200}>
             <HoverCardTrigger asChild>
               <div className="mt-4 space-y-2 cursor-default">
@@ -237,7 +255,7 @@ const Index = () => {
                 : "bg-card border-border text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Filter className="h-4 w-4" />
+            <Grid3X3 className="h-4 w-4" />
             {activeFilterCount > 0 && (
               <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 leading-none">
                 {activeFilterCount}
@@ -256,6 +274,27 @@ const Index = () => {
                   <X className="h-3 w-3" /> Clear all
                 </button>
               )}
+            </div>
+
+            {/* Status filter */}
+            <div>
+              <span className="text-xs text-muted-foreground mb-2 block">Status</span>
+              <div className="flex flex-wrap gap-2">
+                {statusFilters.map((sf) => (
+                  <button
+                    key={sf.key}
+                    onClick={() => setStatusFilter(statusFilter === sf.key ? "all" : sf.key)}
+                    className={`px-3 py-1 text-sm border transition-colors flex items-center gap-1.5 ${
+                      statusFilter === sf.key
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {sf.key !== "all" && <StatusSquare status={sf.key} />}
+                    {sf.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* OP Level */}
@@ -318,20 +357,23 @@ const Index = () => {
                   className="shrink-0"
                   title="Cycle: unchecked → partial → done → skip"
                 >
-                  {statusIcon(cmd.name)}
+                  <StatusSquare status={commandStatuses[cmd.name] || "unchecked"} />
                 </button>
               ) : (
-                statusIcon(cmd.name)
+                <StatusSquare status={commandStatuses[cmd.name] || "unchecked"} />
               )}
               <span className={`text-primary font-mc shrink-0 ${commandStatuses[cmd.name] === "done" ? "line-through" : ""} ${commandStatuses[cmd.name] === "skip" ? "line-through text-muted-foreground" : ""}`}>{cmd.name}</span>
               <span className="text-muted-foreground text-sm truncate">
                 {cmd.description}
               </span>
-              {cmd.bedrockOnly && (
-                <span className="ml-auto text-xs bg-muted text-secondary px-2 py-0.5 shrink-0">
-                  BE only
-                </span>
-              )}
+              <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                {cmd.bedrockOnly && (
+                  <span className="text-xs bg-muted text-secondary px-2 py-0.5">BE only</span>
+                )}
+                {cmd.serverOnly && (
+                  <span className="text-xs bg-muted text-warning px-2 py-0.5">Server</span>
+                )}
+              </div>
             </Link>
           ))}
           {filtered.length === 0 && (
