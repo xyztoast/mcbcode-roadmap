@@ -39,7 +39,9 @@
     --border: 0 0% 18%;
     --input: 0 0% 18%;
     --ring: 157 95% 47%;
-    --radius: 0.25rem;
+    --radius: 0px;
+    --warning: 45 100% 51%;
+    --warning-foreground: 0 0% 5%;
 
     --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 85%;

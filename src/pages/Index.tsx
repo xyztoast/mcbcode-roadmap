@@ -1,10 +1,21 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { bedrockCommands } from "@/data/bedrockCommands";
-import { Search, Filter, X, LogOut, Circle, CircleDot, CheckCircle2 } from "lucide-react";
+import { Search, Filter, X, LogOut, Circle, CircleDot, CheckCircle2, Ban } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis } from "recharts";
 
 const opLevels = ["0", "1", "2", "3", "4"];
 const tags = [
@@ -15,7 +26,14 @@ const tags = [
 ] as const;
 
 type TagKey = (typeof tags)[number]["key"];
-type CommandStatus = "unchecked" | "partial" | "done";
+type CommandStatus = "unchecked" | "partial" | "done" | "skip";
+
+const chartConfig = {
+  updates: {
+    label: "Updates",
+    color: "hsl(var(--primary))",
+  },
+};
 
 const Index = () => {
   const [search, setSearch] = useState("");
@@ -23,6 +41,7 @@ const Index = () => {
   const [selectedTags, setSelectedTags] = useState<Set<TagKey>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [commandStatuses, setCommandStatuses] = useState<Record<string, CommandStatus>>({});
+  const [updateLog, setUpdateLog] = useState<{ date: string; updates: number }[]>([]);
   const { isAuthed, logout } = useAuth();
 
   useEffect(() => {
@@ -36,14 +55,32 @@ const Index = () => {
         setCommandStatuses(map);
       }
     };
+
+    const fetchLog = async () => {
+      const { data } = await supabase
+        .from("command_update_log")
+        .select("created_at")
+        .order("created_at", { ascending: true });
+      if (data && data.length > 0) {
+        const grouped: Record<string, number> = {};
+        data.forEach(d => {
+          const day = new Date(d.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          grouped[day] = (grouped[day] || 0) + 1;
+        });
+        setUpdateLog(Object.entries(grouped).map(([date, updates]) => ({ date, updates })));
+      }
+    };
+
     fetchStatus();
+    fetchLog();
   }, []);
 
   const cycleStatus = async (commandName: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const current = commandStatuses[commandName] || "unchecked";
-    const next: CommandStatus = current === "unchecked" ? "partial" : current === "partial" ? "done" : "unchecked";
+    const order: CommandStatus[] = ["unchecked", "partial", "done", "skip"];
+    const next = order[(order.indexOf(current) + 1) % order.length];
 
     setCommandStatuses(prev => ({ ...prev, [commandName]: next }));
 
@@ -53,6 +90,23 @@ const Index = () => {
         { command_name: commandName, status: next, checked: next === "done", updated_at: new Date().toISOString() },
         { onConflict: "command_name" }
       );
+
+    await supabase
+      .from("command_update_log")
+      .insert({ command_name: commandName, new_status: next });
+
+    // Update local log
+    const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    setUpdateLog(prev => {
+      const copy = [...prev];
+      const existing = copy.find(d => d.date === today);
+      if (existing) {
+        existing.updates += 1;
+      } else {
+        copy.push({ date: today, updates: 1 });
+      }
+      return copy;
+    });
   };
 
   const toggleTag = (key: TagKey) => {
@@ -85,20 +139,23 @@ const Index = () => {
 
   const doneCount = bedrockCommands.filter(c => commandStatuses[c.name] === "done").length;
   const partialCount = bedrockCommands.filter(c => commandStatuses[c.name] === "partial").length;
+  const skipCount = bedrockCommands.filter(c => commandStatuses[c.name] === "skip").length;
   const totalCommands = bedrockCommands.length;
   const progressPercent = ((doneCount + partialCount * 0.5) / totalCommands) * 100;
 
   const statusIcon = (name: string) => {
     const s = commandStatuses[name] || "unchecked";
     if (s === "done") return <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />;
-    if (s === "partial") return <CircleDot className="h-4 w-4 text-secondary shrink-0" />;
+    if (s === "partial") return <CircleDot className="h-4 w-4 text-warning shrink-0" />;
+    if (s === "skip") return <Ban className="h-4 w-4 text-destructive/60 shrink-0" />;
     return <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />;
   };
 
   const statusClass = (name: string) => {
     const s = commandStatuses[name] || "unchecked";
     if (s === "done") return "opacity-60";
-    if (s === "partial") return "border-secondary/50";
+    if (s === "partial") return "border-warning/50";
+    if (s === "skip") return "opacity-30";
     return "";
   };
 
@@ -125,17 +182,37 @@ const Index = () => {
           </div>
 
           {/* Progress section - visible to everyone */}
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                <span className="text-primary">{doneCount}</span> done
-                {partialCount > 0 && <> · <span className="text-secondary">{partialCount}</span> partial</>}
-                {" "}/ {totalCommands} commands
-              </span>
-              <span>{Math.round(progressPercent)}%</span>
-            </div>
-            <Progress value={progressPercent} className="h-2" />
-          </div>
+          <HoverCard openDelay={200}>
+            <HoverCardTrigger asChild>
+              <div className="mt-4 space-y-2 cursor-default">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    <span className="text-primary">{doneCount}</span> done
+                    {partialCount > 0 && <> · <span className="text-warning">{partialCount}</span> partial</>}
+                    {skipCount > 0 && <> · <span className="text-destructive/60">{skipCount}</span> skipped</>}
+                    {" "}/ {totalCommands} commands
+                  </span>
+                  <span>{Math.round(progressPercent)}%</span>
+                </div>
+                <Progress value={progressPercent} className="h-2" />
+              </div>
+            </HoverCardTrigger>
+            <HoverCardContent className="w-80 p-3" align="start">
+              <p className="text-xs text-muted-foreground mb-2">Daily command updates</p>
+              {updateLog.length > 0 ? (
+                <ChartContainer config={chartConfig} className="h-32 w-full">
+                  <LineChart data={updateLog}>
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={24} allowDecimals={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="updates" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ChartContainer>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4">No updates yet</p>
+              )}
+            </HoverCardContent>
+          </HoverCard>
         </div>
       </header>
 
@@ -149,12 +226,12 @@ const Index = () => {
               placeholder="Search commands..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-card border border-border rounded pl-10 pr-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full bg-card border border-border pl-10 pr-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-3 rounded border transition-colors ${
+            className={`flex items-center gap-2 px-4 py-3 border transition-colors ${
               showFilters || activeFilterCount > 0
                 ? "bg-primary/10 border-primary text-primary"
                 : "bg-card border-border text-muted-foreground hover:text-foreground"
@@ -162,7 +239,7 @@ const Index = () => {
           >
             <Filter className="h-4 w-4" />
             {activeFilterCount > 0 && (
-              <span className="text-xs bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 leading-none">
+              <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 leading-none">
                 {activeFilterCount}
               </span>
             )}
@@ -171,7 +248,7 @@ const Index = () => {
 
         {/* Filter panel */}
         {showFilters && (
-          <div className="bg-card border border-border rounded p-4 mb-4 space-y-4">
+          <div className="bg-card border border-border p-4 mb-4 space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground font-mcb">Filters</span>
               {activeFilterCount > 0 && (
@@ -189,7 +266,7 @@ const Index = () => {
                   <button
                     key={level}
                     onClick={() => setSelectedOp(selectedOp === level ? null : level)}
-                    className={`px-3 py-1 text-sm rounded border transition-colors ${
+                    className={`px-3 py-1 text-sm border transition-colors ${
                       selectedOp === level
                         ? "bg-primary text-primary-foreground border-primary"
                         : "bg-muted border-border text-muted-foreground hover:text-foreground"
@@ -209,7 +286,7 @@ const Index = () => {
                   <button
                     key={tag.key}
                     onClick={() => toggleTag(tag.key)}
-                    className={`px-3 py-1 text-sm rounded border transition-colors ${
+                    className={`px-3 py-1 text-sm border transition-colors ${
                       selectedTags.has(tag.key)
                         ? "bg-secondary text-secondary-foreground border-secondary"
                         : "bg-muted border-border text-muted-foreground hover:text-foreground"
@@ -233,25 +310,25 @@ const Index = () => {
             <Link
               key={cmd.name}
               to={`/c/${cmd.name}`}
-              className={`group flex items-center gap-3 px-4 py-3 rounded bg-card border border-border hover:border-primary/50 transition-colors ${statusClass(cmd.name)}`}
+              className={`group flex items-center gap-3 px-4 py-3 bg-card border border-border hover:border-primary/50 transition-colors ${statusClass(cmd.name)}`}
             >
               {isAuthed ? (
                 <button
                   onClick={(e) => cycleStatus(cmd.name, e)}
                   className="shrink-0"
-                  title="Cycle: unchecked → partial → done"
+                  title="Cycle: unchecked → partial → done → skip"
                 >
                   {statusIcon(cmd.name)}
                 </button>
               ) : (
                 statusIcon(cmd.name)
               )}
-              <span className={`text-primary font-mc shrink-0 ${commandStatuses[cmd.name] === "done" ? "line-through" : ""}`}>{cmd.name}</span>
+              <span className={`text-primary font-mc shrink-0 ${commandStatuses[cmd.name] === "done" ? "line-through" : ""} ${commandStatuses[cmd.name] === "skip" ? "line-through text-muted-foreground" : ""}`}>{cmd.name}</span>
               <span className="text-muted-foreground text-sm truncate">
                 {cmd.description}
               </span>
               {cmd.bedrockOnly && (
-                <span className="ml-auto text-xs bg-muted text-secondary px-2 py-0.5 rounded shrink-0">
+                <span className="ml-auto text-xs bg-muted text-secondary px-2 py-0.5 shrink-0">
                   BE only
                 </span>
               )}
