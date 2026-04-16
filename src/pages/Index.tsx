@@ -167,7 +167,14 @@ const Index = () => {
   const partialCount = bedrockCommands.filter(c => commandStatuses[c.name] === "partial").length;
   const skipCount = bedrockCommands.filter(c => commandStatuses[c.name] === "skip").length;
   const totalCommands = bedrockCommands.length;
-  const progressPercent = ((doneCount + partialCount * 0.5) / totalCommands) * 100;
+  // exclude skipped commands from total
+const effectiveTotal = totalCommands - skipCount;
+
+// keep partial worth 0.5 like you already do
+const progressPercent =
+  effectiveTotal > 0
+    ? ((doneCount + partialCount * 0.5) / effectiveTotal) * 100
+    : 0;
 
   const statusClass = (name: string) => {
     const s = commandStatuses[name] || "unchecked";
