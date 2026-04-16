@@ -16,6 +16,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis } from "recharts";
+import DynamicTabs from "@/components/DynamicTabs";
 
 const opLevels = ["0", "1", "2", "3", "4"];
 const tags = [
@@ -56,7 +57,14 @@ const Index = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [commandStatuses, setCommandStatuses] = useState<Record<string, CommandStatus>>({});
   const [updateLog, setUpdateLog] = useState<{ date: string; updates: number }[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [isDefaultTab, setIsDefaultTab] = useState(true);
   const { isAuthed, logout } = useAuth();
+
+  const handleTabChange = (tabId: string | null, isDefault: boolean) => {
+    setActiveTab(tabId);
+    setIsDefaultTab(isDefault);
+  };
 
   useEffect(() => {
     const fetchStatus = async () => {
