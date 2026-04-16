@@ -16,6 +16,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis } from "recharts";
+import DynamicTabs from "@/components/DynamicTabs";
 
 const opLevels = ["0", "1", "2", "3", "4"];
 const tags = [
@@ -56,7 +57,14 @@ const Index = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [commandStatuses, setCommandStatuses] = useState<Record<string, CommandStatus>>({});
   const [updateLog, setUpdateLog] = useState<{ date: string; updates: number }[]>([]);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [isDefaultTab, setIsDefaultTab] = useState(true);
   const { isAuthed, logout } = useAuth();
+
+  const handleTabChange = (tabId: string | null, isDefault: boolean) => {
+    setActiveTab(tabId);
+    setIsDefaultTab(isDefault);
+  };
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -235,6 +243,9 @@ const Index = () => {
       </header>
 
       <main className="container max-w-4xl mx-auto px-4 py-6">
+        <DynamicTabs activeTab={activeTab} onTabChange={handleTabChange} />
+
+        {isDefaultTab && (<>
         {/* Search + filter toggle */}
         <div className="flex gap-2 mb-3">
           <div className="relative flex-1">
@@ -382,6 +393,7 @@ const Index = () => {
             </p>
           )}
         </div>
+        </>)}
 
         <footer className="mt-12 py-6 border-t border-border text-center text-xs text-muted-foreground">
           Data sourced from the <a href="https://minecraft.wiki/w/Commands" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Minecraft Wiki</a>. Not affiliated with Mojang or Microsoft.
