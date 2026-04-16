@@ -56,6 +56,68 @@ export type Database = {
         }
         Relationships: []
       }
+      tab_content_blocks: {
+        Row: {
+          block_type: string
+          content: string
+          created_at: string
+          id: string
+          sort_order: number
+          tab_id: string
+          updated_at: string
+        }
+        Insert: {
+          block_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          tab_id: string
+          updated_at?: string
+        }
+        Update: {
+          block_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          tab_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tab_content_blocks_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tabs: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
