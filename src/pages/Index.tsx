@@ -243,6 +243,9 @@ const Index = () => {
       </header>
 
       <main className="container max-w-4xl mx-auto px-4 py-6">
+        <DynamicTabs activeTab={activeTab} onTabChange={handleTabChange} />
+
+        {isDefaultTab && (<>
         {/* Search + filter toggle */}
         <div className="flex gap-2 mb-3">
           <div className="relative flex-1">
