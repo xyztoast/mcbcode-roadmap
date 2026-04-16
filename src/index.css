@@ -88,6 +88,11 @@
 /* Tiptap rich text editor styles */
 .prose-minecraft .tiptap {
   @apply text-foreground text-sm leading-relaxed focus:outline-none min-h-[2rem];
+  font-family: 'mcfont', monospace, sans-serif;
+}
+.prose-minecraft .tiptap strong {
+  font-family: 'mcfontb', monospace, sans-serif;
+  font-weight: normal;
 }
 .prose-minecraft .tiptap p {
   @apply mb-2;
