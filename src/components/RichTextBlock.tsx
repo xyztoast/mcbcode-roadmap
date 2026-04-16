@@ -1,6 +1,8 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
 import { useEffect, useRef } from "react";
 
 interface RichTextBlockProps {
@@ -17,6 +19,8 @@ const RichTextBlock = ({ content, editable, onChange, placeholder = "Start typin
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder }),
+      TaskList,
+      TaskItem.configure({ nested: true }),
     ],
     content,
     editable,
@@ -34,7 +38,6 @@ const RichTextBlock = ({ content, editable, onChange, placeholder = "Start typin
     }
   }, [editable, editor]);
 
-  // Sync content from DB if it changes externally
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
       editor.commands.setContent(content);
@@ -82,6 +85,12 @@ const RichTextBlock = ({ content, editable, onChange, placeholder = "Start typin
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("orderedList") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             1. List
+          </button>
+          <button
+            onClick={() => editor.chain().focus().toggleTaskList().run()}
+            className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("taskList") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
+          >
+            ☑ Check
           </button>
           <button
             onClick={() => editor.chain().focus().toggleBlockquote().run()}

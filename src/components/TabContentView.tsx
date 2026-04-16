@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import RichTextBlock from "./RichTextBlock";
-import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 interface ContentBlock {
   id: string;
@@ -15,6 +15,8 @@ interface ContentBlock {
 const TabContentView = ({ tabId }: { tabId: string }) => {
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const { isAuthed } = useAuth();
+  const dragItem = useRef<number | null>(null);
+  const dragOver = useRef<number | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -51,20 +53,36 @@ const TabContentView = ({ tabId }: { tabId: string }) => {
     setBlocks(prev => prev.filter(b => b.id !== id));
   };
 
-  const moveBlock = async (id: string, direction: "up" | "down") => {
-    const idx = blocks.findIndex(b => b.id === id);
-    if ((direction === "up" && idx === 0) || (direction === "down" && idx === blocks.length - 1)) return;
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  const handleDragStart = (idx: number) => {
+    dragItem.current = idx;
+  };
+
+  const handleDragEnter = (idx: number) => {
+    dragOver.current = idx;
+  };
+
+  const handleDragEnd = async () => {
+    if (dragItem.current === null || dragOver.current === null || dragItem.current === dragOver.current) {
+      dragItem.current = null;
+      dragOver.current = null;
+      return;
+    }
     const newBlocks = [...blocks];
-    const tempOrder = newBlocks[idx].sort_order;
-    newBlocks[idx].sort_order = newBlocks[swapIdx].sort_order;
-    newBlocks[swapIdx].sort_order = tempOrder;
-    [newBlocks[idx], newBlocks[swapIdx]] = [newBlocks[swapIdx], newBlocks[idx]];
-    setBlocks(newBlocks);
-    await Promise.all([
-      supabase.from("tab_content_blocks").update({ sort_order: newBlocks[idx].sort_order }).eq("id", newBlocks[idx].id),
-      supabase.from("tab_content_blocks").update({ sort_order: newBlocks[swapIdx].sort_order }).eq("id", newBlocks[swapIdx].id),
-    ]);
+    const draggedBlock = newBlocks.splice(dragItem.current, 1)[0];
+    newBlocks.splice(dragOver.current, 0, draggedBlock);
+
+    // Reassign sort_order
+    const updated = newBlocks.map((b, i) => ({ ...b, sort_order: i }));
+    setBlocks(updated);
+    dragItem.current = null;
+    dragOver.current = null;
+
+    // Persist all new orders
+    await Promise.all(
+      updated.map(b =>
+        supabase.from("tab_content_blocks").update({ sort_order: b.sort_order }).eq("id", b.id)
+      )
+    );
   };
 
   return (
@@ -72,12 +90,19 @@ const TabContentView = ({ tabId }: { tabId: string }) => {
       {blocks.length === 0 && !isAuthed && (
         <p className="text-muted-foreground text-center py-12">No content yet.</p>
       )}
-      {blocks.map((block) => (
-        <div key={block.id} className="bg-card border border-border p-4 group relative">
+      {blocks.map((block, idx) => (
+        <div
+          key={block.id}
+          className="bg-card border border-border p-4 group relative"
+          draggable={isAuthed}
+          onDragStart={() => handleDragStart(idx)}
+          onDragEnter={() => handleDragEnter(idx)}
+          onDragEnd={handleDragEnd}
+          onDragOver={(e) => e.preventDefault()}
+        >
           {isAuthed && (
             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={() => moveBlock(block.id, "up")} className="p-1 text-muted-foreground hover:text-foreground"><ArrowUp className="h-3 w-3" /></button>
-              <button onClick={() => moveBlock(block.id, "down")} className="p-1 text-muted-foreground hover:text-foreground"><ArrowDown className="h-3 w-3" /></button>
+              <span className="p-1 text-muted-foreground cursor-grab active:cursor-grabbing text-xs select-none">⠿</span>
               <button onClick={() => deleteBlock(block.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
             </div>
           )}

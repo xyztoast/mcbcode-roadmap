@@ -88,6 +88,11 @@
 /* Tiptap rich text editor styles */
 .prose-minecraft .tiptap {
   @apply text-foreground text-sm leading-relaxed focus:outline-none min-h-[2rem];
+  font-family: 'mcfont', monospace, sans-serif;
+}
+.prose-minecraft .tiptap strong {
+  font-family: 'mcfontb', monospace, sans-serif;
+  font-weight: normal;
 }
 .prose-minecraft .tiptap p {
   @apply mb-2;
@@ -119,4 +124,33 @@
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* Task list (checkbox) styles */
+.prose-minecraft .tiptap ul[data-type="taskList"] {
+  @apply list-none p-0 mb-2;
+}
+.prose-minecraft .tiptap ul[data-type="taskList"] li {
+  @apply flex items-start gap-2 mb-1;
+}
+.prose-minecraft .tiptap ul[data-type="taskList"] li label {
+  @apply flex items-center;
+}
+.prose-minecraft .tiptap ul[data-type="taskList"] li label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid hsl(var(--muted-foreground) / 0.3);
+  background: hsl(var(--muted-foreground) / 0.1);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.prose-minecraft .tiptap ul[data-type="taskList"] li label input[type="checkbox"]:checked {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+.prose-minecraft .tiptap ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  @apply line-through opacity-50;
 }
