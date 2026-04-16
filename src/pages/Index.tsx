@@ -393,6 +393,7 @@ const Index = () => {
             </p>
           )}
         </div>
+        </>)}
 
         <footer className="mt-12 py-6 border-t border-border text-center text-xs text-muted-foreground">
           Data sourced from the <a href="https://minecraft.wiki/w/Commands" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Minecraft Wiki</a>. Not affiliated with Mojang or Microsoft.
