@@ -50,55 +50,55 @@ const RichTextBlock = ({ content, editable, onChange, placeholder = "Start typin
     <div className="rich-text-block">
       {editable && (
         <div className="flex gap-1 mb-2 flex-wrap">
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("bold") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             B
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleItalic().run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("italic") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             I
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("heading", { level: 2 }) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             H2
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("heading", { level: 3 }) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             H3
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleBulletList().run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("bulletList") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             • List
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("orderedList") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             1. List
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleTaskList().run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("taskList") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             ☑ Check
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleBlockquote().run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("blockquote") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >
             Quote
           </button>
-          <button
+          <button type="button" onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
             className={`px-2 py-1 text-xs border border-border transition-colors ${editor.isActive("codeBlock") ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}
           >

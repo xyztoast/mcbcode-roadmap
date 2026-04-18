@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import TabContentView from "./TabContentView";
@@ -21,6 +21,8 @@ const DynamicTabs = ({ activeTab, onTabChange }: DynamicTabsProps) => {
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [titleInput, setTitleInput] = useState("");
   const { isAuthed } = useAuth();
+  const dragItem = useRef<number | null>(null);
+  const dragOver = useRef<number | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -77,14 +79,50 @@ const DynamicTabs = ({ activeTab, onTabChange }: DynamicTabsProps) => {
     setEditingTitle(null);
   };
 
+  const handleDragStart = (idx: number) => {
+    dragItem.current = idx;
+  };
+
+  const handleDragEnter = (idx: number) => {
+    dragOver.current = idx;
+  };
+
+  const handleDragEnd = async () => {
+    if (dragItem.current === null || dragOver.current === null || dragItem.current === dragOver.current) {
+      dragItem.current = null;
+      dragOver.current = null;
+      return;
+    }
+    const newTabs = [...tabs];
+    const dragged = newTabs.splice(dragItem.current, 1)[0];
+    newTabs.splice(dragOver.current, 0, dragged);
+    const updated = newTabs.map((t, i) => ({ ...t, sort_order: i }));
+    setTabs(updated);
+    dragItem.current = null;
+    dragOver.current = null;
+    await Promise.all(
+      updated.map(t =>
+        supabase.from("tabs").update({ sort_order: t.sort_order }).eq("id", t.id)
+      )
+    );
+  };
+
   const currentTab = tabs.find(t => t.id === activeTab);
 
   return (
     <div>
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-border mb-4 overflow-x-auto">
-        {tabs.map((tab) => (
-          <div key={tab.id} className="flex items-center group">
+        {tabs.map((tab, idx) => (
+          <div
+            key={tab.id}
+            className="flex items-center group"
+            draggable={isAuthed && editingTitle !== tab.id}
+            onDragStart={() => handleDragStart(idx)}
+            onDragEnter={() => handleDragEnter(idx)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => e.preventDefault()}
+          >
             {editingTitle === tab.id ? (
               <input
                 value={titleInput}
@@ -102,7 +140,7 @@ const DynamicTabs = ({ activeTab, onTabChange }: DynamicTabsProps) => {
                   activeTab === tab.id
                     ? "border-primary text-primary"
                     : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
+                } ${isAuthed ? "cursor-grab active:cursor-grabbing" : ""}`}
               >
                 {tab.title}
               </button>
