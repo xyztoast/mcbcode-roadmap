@@ -21,13 +21,6 @@ type TagKey = (typeof tags)[number]["key"];
 type CommandStatus = "unchecked" | "partial" | "done" | "skip";
 type StatusFilter = "all" | "unchecked" | "partial" | "done" | "skip";
 
-const chartConfig = {
-  updates: {
-    label: "Updates",
-    color: "hsl(var(--primary))",
-  },
-};
-
 const StatusSquare = ({ status }: { status: CommandStatus }) => {
   const colors: Record<CommandStatus, string> = {
     unchecked: "bg-muted-foreground/20 border-muted-foreground/30",
@@ -68,24 +61,7 @@ const Index = () => {
         setCommandStatuses(map);
       }
     };
-
-    const fetchLog = async () => {
-      const { data } = await supabase
-        .from("command_update_log")
-        .select("created_at")
-        .order("created_at", { ascending: true });
-      if (data && data.length > 0) {
-        const grouped: Record<string, number> = {};
-        data.forEach(d => {
-          const day = new Date(d.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-          grouped[day] = (grouped[day] || 0) + 1;
-        });
-        setUpdateLog(Object.entries(grouped).map(([date, updates]) => ({ date, updates })));
-      }
-    };
-
     fetchStatus();
-    fetchLog();
   }, []);
 
   const cycleStatus = async (commandName: string, e: React.MouseEvent) => {
@@ -108,17 +84,9 @@ const Index = () => {
       .from("command_update_log")
       .insert({ command_name: commandName, new_status: next });
 
-    const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    setUpdateLog(prev => {
-      const copy = [...prev];
-      const existing = copy.find(d => d.date === today);
-      if (existing) {
-        existing.updates += 1;
-      } else {
-        copy.push({ date: today, updates: 1 });
-      }
-      return copy;
-    });
+    await supabase
+      .from("activity_log")
+      .insert({ source: "command", detail: `${commandName}:${next}` });
   };
 
   const toggleTag = (key: TagKey) => {
