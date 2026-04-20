@@ -5,18 +5,9 @@ import { Search, X, LogOut, Grid3X3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis } from "recharts";
 import DynamicTabs from "@/components/DynamicTabs";
+import ProgressGraph from "@/components/ProgressGraph";
+import LastUpdated from "@/components/LastUpdated";
 
 const opLevels = ["0", "1", "2", "3", "4"];
 const tags = [
