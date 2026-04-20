@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          source: string
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          source?: string
+        }
+        Relationships: []
+      }
       command_status: {
         Row: {
           checked: boolean

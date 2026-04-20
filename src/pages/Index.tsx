@@ -5,18 +5,9 @@ import { Search, X, LogOut, Grid3X3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis } from "recharts";
 import DynamicTabs from "@/components/DynamicTabs";
+import ProgressGraph from "@/components/ProgressGraph";
+import LastUpdated from "@/components/LastUpdated";
 
 const opLevels = ["0", "1", "2", "3", "4"];
 const tags = [
@@ -29,13 +20,6 @@ const tags = [
 type TagKey = (typeof tags)[number]["key"];
 type CommandStatus = "unchecked" | "partial" | "done" | "skip";
 type StatusFilter = "all" | "unchecked" | "partial" | "done" | "skip";
-
-const chartConfig = {
-  updates: {
-    label: "Updates",
-    color: "hsl(var(--primary))",
-  },
-};
 
 const StatusSquare = ({ status }: { status: CommandStatus }) => {
   const colors: Record<CommandStatus, string> = {
@@ -56,7 +40,7 @@ const Index = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [commandStatuses, setCommandStatuses] = useState<Record<string, CommandStatus>>({});
-  const [updateLog, setUpdateLog] = useState<{ date: string; updates: number }[]>([]);
+  
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [isDefaultTab, setIsDefaultTab] = useState(true);
   const { isAuthed, logout } = useAuth();
@@ -77,24 +61,7 @@ const Index = () => {
         setCommandStatuses(map);
       }
     };
-
-    const fetchLog = async () => {
-      const { data } = await supabase
-        .from("command_update_log")
-        .select("created_at")
-        .order("created_at", { ascending: true });
-      if (data && data.length > 0) {
-        const grouped: Record<string, number> = {};
-        data.forEach(d => {
-          const day = new Date(d.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-          grouped[day] = (grouped[day] || 0) + 1;
-        });
-        setUpdateLog(Object.entries(grouped).map(([date, updates]) => ({ date, updates })));
-      }
-    };
-
     fetchStatus();
-    fetchLog();
   }, []);
 
   const cycleStatus = async (commandName: string, e: React.MouseEvent) => {
@@ -117,17 +84,9 @@ const Index = () => {
       .from("command_update_log")
       .insert({ command_name: commandName, new_status: next });
 
-    const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    setUpdateLog(prev => {
-      const copy = [...prev];
-      const existing = copy.find(d => d.date === today);
-      if (existing) {
-        existing.updates += 1;
-      } else {
-        copy.push({ date: today, updates: 1 });
-      }
-      return copy;
-    });
+    await supabase
+      .from("activity_log")
+      .insert({ source: "command", detail: `${commandName}:${next}` });
   };
 
   const toggleTag = (key: TagKey) => {
@@ -215,37 +174,18 @@ const progressPercent =
           </div>
 
           {/* Progress section */}
-          <HoverCard openDelay={200}>
-            <HoverCardTrigger asChild>
-              <div className="mt-4 space-y-2 cursor-default">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    <span className="text-primary">{doneCount}</span> done
-                    {partialCount > 0 && <> · <span className="text-warning">{partialCount}</span> partial</>}
-                    {skipCount > 0 && <> · <span className="text-destructive/60">{skipCount}</span> skipped</>}
-                    {" "}/ {totalCommands} commands
-                  </span>
-                  <span>{Math.round(progressPercent)}%</span>
-                </div>
-                <Progress value={progressPercent} className="h-2" />
-              </div>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80 p-3" align="start">
-              <p className="text-xs text-muted-foreground mb-2">Daily command updates</p>
-              {updateLog.length > 0 ? (
-                <ChartContainer config={chartConfig} className="h-32 w-full">
-                  <LineChart data={updateLog}>
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={24} allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="updates" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ChartContainer>
-              ) : (
-                <p className="text-xs text-muted-foreground text-center py-4">No updates yet</p>
-              )}
-            </HoverCardContent>
-          </HoverCard>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                <span className="text-primary">{doneCount}</span> done
+                {partialCount > 0 && <> · <span className="text-warning">{partialCount}</span> partial</>}
+                {skipCount > 0 && <> · <span className="text-destructive/60">{skipCount}</span> skipped</>}
+                {" "}/ {totalCommands} commands
+              </span>
+              <span>{Math.round(progressPercent)}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
         </div>
       </header>
 
@@ -253,6 +193,9 @@ const progressPercent =
         <DynamicTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
         {isDefaultTab && (<>
+        <div className="mb-3 flex justify-end">
+          <ProgressGraph />
+        </div>
         {/* Search + filter toggle */}
         <div className="flex gap-2 mb-3">
           <div className="relative flex-1">
@@ -401,6 +344,8 @@ const progressPercent =
           )}
         </div>
         </>)}
+
+        <LastUpdated />
 
         <footer className="mt-12 py-6 border-t border-border text-center text-xs text-muted-foreground">
           Data sourced from the <a href="https://minecraft.wiki/w/Commands" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">Minecraft Wiki</a>. Not affiliated with Mojang or Microsoft.

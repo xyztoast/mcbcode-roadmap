@@ -2,7 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import TabContentView from "./TabContentView";
+import LastUpdated from "./LastUpdated";
 import { Plus, X } from "lucide-react";
+
+const logTabActivity = (detail: string) => {
+  supabase.from("activity_log").insert({ source: "tab", detail });
+};
 
 interface Tab {
   id: string;
@@ -53,6 +58,7 @@ const DynamicTabs = ({ activeTab, onTabChange }: DynamicTabsProps) => {
       const newTab = data as Tab;
       setTabs(prev => [...prev, newTab]);
       onTabChange(newTab.id, false);
+      logTabActivity(`add:${newTab.id}`);
     }
   };
 
@@ -61,6 +67,7 @@ const DynamicTabs = ({ activeTab, onTabChange }: DynamicTabsProps) => {
     if (!tab || tab.is_default) return;
     await supabase.from("tabs").delete().eq("id", id);
     setTabs(prev => prev.filter(t => t.id !== id));
+    logTabActivity(`delete:${id}`);
     if (activeTab === id) {
       const def = tabs.find(t => t.is_default);
       onTabChange(def?.id || null, true);
@@ -77,6 +84,7 @@ const DynamicTabs = ({ activeTab, onTabChange }: DynamicTabsProps) => {
     await supabase.from("tabs").update({ title: titleInput.trim() }).eq("id", id);
     setTabs(prev => prev.map(t => t.id === id ? { ...t, title: titleInput.trim() } : t));
     setEditingTitle(null);
+    logTabActivity(`rename:${id}`);
   };
 
   const handleDragStart = (idx: number) => {

@@ -30,6 +30,10 @@ const TabContentView = ({ tabId }: { tabId: string }) => {
     fetch();
   }, [tabId]);
 
+  const logActivity = (detail: string) => {
+    supabase.from("activity_log").insert({ source: "block", detail });
+  };
+
   const addBlock = async () => {
     const maxOrder = blocks.length > 0 ? Math.max(...blocks.map(b => b.sort_order)) + 1 : 0;
     const { data } = await supabase
@@ -37,7 +41,10 @@ const TabContentView = ({ tabId }: { tabId: string }) => {
       .insert({ tab_id: tabId, block_type: "text", content: "", sort_order: maxOrder })
       .select()
       .single();
-    if (data) setBlocks(prev => [...prev, data as ContentBlock]);
+    if (data) {
+      setBlocks(prev => [...prev, data as ContentBlock]);
+      logActivity(`add:${tabId}`);
+    }
   };
 
   const updateBlock = async (id: string, content: string) => {
@@ -46,11 +53,13 @@ const TabContentView = ({ tabId }: { tabId: string }) => {
       .update({ content, updated_at: new Date().toISOString() })
       .eq("id", id);
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, content } : b));
+    logActivity(`edit:${id}`);
   };
 
   const deleteBlock = async (id: string) => {
     await supabase.from("tab_content_blocks").delete().eq("id", id);
     setBlocks(prev => prev.filter(b => b.id !== id));
+    logActivity(`delete:${id}`);
   };
 
   const handleDragStart = (idx: number) => {
