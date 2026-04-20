@@ -40,7 +40,7 @@ const Index = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
   const [commandStatuses, setCommandStatuses] = useState<Record<string, CommandStatus>>({});
-  const [updateLog, setUpdateLog] = useState<{ date: string; updates: number }[]>([]);
+  
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [isDefaultTab, setIsDefaultTab] = useState(true);
   const { isAuthed, logout } = useAuth();
