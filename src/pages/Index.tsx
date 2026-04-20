@@ -193,6 +193,9 @@ const progressPercent =
         <DynamicTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
         {isDefaultTab && (<>
+        <div className="mb-3 flex justify-end">
+          <ProgressGraph />
+        </div>
         {/* Search + filter toggle */}
         <div className="flex gap-2 mb-3">
           <div className="relative flex-1">
