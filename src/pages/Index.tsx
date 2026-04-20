@@ -206,37 +206,18 @@ const progressPercent =
           </div>
 
           {/* Progress section */}
-          <HoverCard openDelay={200}>
-            <HoverCardTrigger asChild>
-              <div className="mt-4 space-y-2 cursor-default">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    <span className="text-primary">{doneCount}</span> done
-                    {partialCount > 0 && <> · <span className="text-warning">{partialCount}</span> partial</>}
-                    {skipCount > 0 && <> · <span className="text-destructive/60">{skipCount}</span> skipped</>}
-                    {" "}/ {totalCommands} commands
-                  </span>
-                  <span>{Math.round(progressPercent)}%</span>
-                </div>
-                <Progress value={progressPercent} className="h-2" />
-              </div>
-            </HoverCardTrigger>
-            <HoverCardContent className="w-80 p-3" align="start">
-              <p className="text-xs text-muted-foreground mb-2">Daily command updates</p>
-              {updateLog.length > 0 ? (
-                <ChartContainer config={chartConfig} className="h-32 w-full">
-                  <LineChart data={updateLog}>
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={24} allowDecimals={false} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="updates" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ChartContainer>
-              ) : (
-                <p className="text-xs text-muted-foreground text-center py-4">No updates yet</p>
-              )}
-            </HoverCardContent>
-          </HoverCard>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                <span className="text-primary">{doneCount}</span> done
+                {partialCount > 0 && <> · <span className="text-warning">{partialCount}</span> partial</>}
+                {skipCount > 0 && <> · <span className="text-destructive/60">{skipCount}</span> skipped</>}
+                {" "}/ {totalCommands} commands
+              </span>
+              <span>{Math.round(progressPercent)}%</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
         </div>
       </header>
 
