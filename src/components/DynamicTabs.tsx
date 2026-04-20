@@ -2,7 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import TabContentView from "./TabContentView";
+import LastUpdated from "./LastUpdated";
 import { Plus, X } from "lucide-react";
+
+const logTabActivity = (detail: string) => {
+  supabase.from("activity_log").insert({ source: "tab", detail });
+};
 
 interface Tab {
   id: string;
